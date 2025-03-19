@@ -48,7 +48,7 @@ PIP-MATE is a Python application that allows users to manage Python packages, cr
 
 ### User Interface
 
-- **Create Virtual Environment**: Click on the "Create Virtualenv" button to create a new virtual environment in the current directory.
+- **Create Virtual Environment**: Click on the "Create Virtualenv" button to create a new virtual environment in the desired directory.
 - **Activate/Deactivate Virtual Environment**: You can activate or deactivate a virtual environment by clicking the respective buttons.
 - **Install Package**: Enter the package name in the input field and click "Install Package" to install a Python package.
 - **Upgrade Package**: You can upgrade an already installed package by clicking "Upgrade Package."
