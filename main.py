@@ -4,43 +4,88 @@ import subprocess
 import requests as rq
 from colorama import init, Fore
 import tkinter as tk
-from tkinter import messagebox
-
+from tkinter import messagebox, simpledialog
 
 # Global variable to track the virtual environment status
 virtualenv_path = None
+
+def on_entry_click(event):
+    """When the Entry widget is clicked, clear the placeholder text."""
+    if entry_package_name.get() == "Enter package name...":
+        entry_package_name.delete(0, tk.END)  # Clear the placeholder text
+        entry_package_name.config(fg="#333")  # Change text color to normal
+
+def on_focus_out(event):
+    """When the Entry widget loses focus, show the placeholder text if it's empty."""
+    if entry_package_name.get() == "":
+        entry_package_name.insert(0, "Enter package name...")
+        entry_package_name.config(fg="#999")  # Change text color to placeholder color
+
+def is_valid_virtualenv(path):
+    """Check if the given path contains a valid virtual environment."""
+    if not os.path.exists(path):
+        return False
+    # Check for the presence of 'bin/activate' (Linux/Mac) or 'Scripts/activate' (Windows)
+    activate_script = os.path.join(path, "bin", "activate") if os.name != 'nt' else os.path.join(path, "Scripts", "activate")
+    return os.path.exists(activate_script)
 
 def create_virtualenv():
     """Create a new virtual environment in the specified directory."""
     def create():
         global virtualenv_path
-        env_path = os.path.join(os.getcwd(), "myenv")  # Default to current working directory with 'myenv' name
-        if os.path.exists(env_path):
-            messagebox.showerror("Error", "Virtual environment already exists!")
+        result_text.config(state=tk.NORMAL)
+        result_text.delete(1.0, tk.END)  # Clear the result text before starting
+        # Ask the user for the virtual environment path
+        env_path = simpledialog.askstring("Create Virtualenv", "Enter the path for the virtual environment:")
+        if not env_path:
+            messagebox.showerror("Error", "No path provided!")
+            return
+        if is_valid_virtualenv(env_path):
+            messagebox.showerror("Error", "A valid virtual environment already exists at this path!")
             return
         try:
+            result_text.insert(tk.END, f"Creating virtual environment at {env_path}...\n")
             subprocess.check_call([sys.executable, "-m", "venv", env_path])
-            virtualenv_path = env_path
-            messagebox.showinfo("Success", f"Virtual environment created at {env_path}")
-            activate_virtualenv()  # Automatically activate the virtual environment after creation
+            virtualenv_path = env_path  # Set the global variable to the new virtual environment path
+            result_text.insert(tk.END, f"Virtual environment created and activated at {env_path}\n")
+            messagebox.showinfo("Success", f"Virtual environment created and activated at {env_path}")
         except subprocess.CalledProcessError as e:
+            result_text.insert(tk.END, f"Error creating virtual environment: {str(e)}\n")
             messagebox.showerror("Error", f"Error creating virtual environment: {str(e)}")
+        result_text.config(state=tk.DISABLED)
 
     create()
 
 def activate_virtualenv():
     """Activate the virtual environment and set the virtualenv_path variable."""
     global virtualenv_path
-    if not virtualenv_path or not os.path.exists(os.path.join(virtualenv_path, "bin" if os.name != 'nt' else "Scripts", "activate")):
+    result_text.config(state=tk.NORMAL)
+    result_text.delete(1.0, tk.END)  # Clear the result text before starting
+    # Ask the user for the virtual environment path
+    env_path = simpledialog.askstring("Activate Virtualenv", "Enter the path of the virtual environment to activate:")
+    if not env_path:
+        messagebox.showerror("Error", "No path provided!")
+        return
+    if not is_valid_virtualenv(env_path):
         messagebox.showerror("Error", "Invalid virtual environment path!")
         return
+    virtualenv_path = env_path
+    result_text.insert(tk.END, f"Virtual environment activated: {virtualenv_path}\n")
     messagebox.showinfo("Info", f"Virtual environment activated: {virtualenv_path}")
+    result_text.config(state=tk.DISABLED)
 
 def deactivate_virtualenv():
     """Deactivate the virtual environment by setting the virtualenv_path to None."""
     global virtualenv_path
+    result_text.config(state=tk.NORMAL)
+    result_text.delete(1.0, tk.END)  # Clear the result text before starting
+    if not virtualenv_path:
+        messagebox.showerror("Error", "No virtual environment is currently active!")
+        return
     virtualenv_path = None
+    result_text.insert(tk.END, "Virtual environment deactivated. Using global environment now.\n")
     messagebox.showinfo("Info", "Virtual environment deactivated. Using global environment now.")
+    result_text.config(state=tk.DISABLED)
 
 def get_pip_command():
     """Return the pip command based on whether a virtual environment is active."""
@@ -55,13 +100,16 @@ def get_pip_command():
 def fetch_package_info():
     """Fetches package information from PyPI and displays it."""
     def fetch():
+        result_text.config(state=tk.NORMAL)
+        result_text.delete(1.0, tk.END)  # Clear the result text before starting
         package_name = entry_package_name.get().strip()
-        if not package_name:
+        if not package_name or package_name == "Enter package name...":
             messagebox.showerror("Error", "Please enter a package name!")
             return
 
         url = f"https://pypi.org/pypi/{package_name}/json"
         try:
+            result_text.insert(tk.END, f"Fetching package information for {package_name}...\n")
             response = rq.get(url, timeout=5)
             response.raise_for_status()  # Check for a successful response
             data = response.json()
@@ -76,95 +124,119 @@ def fetch_package_info():
             documentation_url = project_urls.get("Documentation", "No documentation available")
 
             # Display the fetched data in the text widget
-            result_text.config(state=tk.NORMAL)
-            result_text.delete(1.0, tk.END)
             result_text.insert(tk.END,
                 f"Package Name: {name}\n"
                 f"Version: {version}\n"
                 f"Description: {summary}\n"
                 f"Author: {author}\n"
                 f"Documentation: {documentation_url}\n"
-                f"Source: {url}"
+                f"Source: {url}\n"
             )
-            result_text.config(state=tk.DISABLED)
         except rq.exceptions.RequestException:
-            messagebox.showerror("Error", f"Error fetching package details.")
+            result_text.insert(tk.END, "Error fetching package details.\n")
+        result_text.config(state=tk.DISABLED)
 
     fetch()
 
 def install_package():
     """Install a package using pip."""
     def install():
+        result_text.config(state=tk.NORMAL)
+        result_text.delete(1.0, tk.END)  # Clear the result text before starting
         package_name = entry_package_name.get().strip()
-        if not package_name:
+        if not package_name or package_name == "Enter package name...":
             messagebox.showerror("Error", "Please enter a package name!")
             return
         pip_command = get_pip_command()
         try:
             subprocess.check_output([pip_command, "show", package_name])
+            result_text.insert(tk.END, f"{package_name} is already installed.\n")
             messagebox.showinfo("Info", f"{package_name} is already installed.")
         except subprocess.CalledProcessError:
             try:
+                result_text.insert(tk.END, f"Installing {package_name}...\n")
                 subprocess.check_call([pip_command, "install", package_name])
+                result_text.insert(tk.END, f"{package_name} has been installed successfully.\n")
                 messagebox.showinfo("Success", f"{package_name} has been installed successfully.")
             except subprocess.CalledProcessError:
+                result_text.insert(tk.END, f"Couldn't find or install {package_name}.\n")
                 messagebox.showerror("Error", f"Couldn't find or install {package_name}.")
+        result_text.config(state=tk.DISABLED)
 
     install()
 
 def uninstall_package():
     """Uninstall a package using pip."""
     def uninstall():
+        result_text.config(state=tk.NORMAL)
+        result_text.delete(1.0, tk.END)  # Clear the result text before starting
         package_name = entry_package_name.get().strip()
-        if not package_name:
+        if not package_name or package_name == "Enter package name...":
             messagebox.showerror("Error", "Please enter a package name!")
             return
         pip_command = get_pip_command()
         try:
             subprocess.check_output([pip_command, "show", package_name])
+            result_text.insert(tk.END, f"Uninstalling {package_name}...\n")
             subprocess.check_call([pip_command, "uninstall", package_name, "-y"])
+            result_text.insert(tk.END, f"{package_name} has been uninstalled successfully.\n")
             messagebox.showinfo("Success", f"{package_name} has been uninstalled successfully.")
         except subprocess.CalledProcessError:
+            result_text.insert(tk.END, f"{package_name} is not installed or an error occurred.\n")
             messagebox.showerror("Error", f"{package_name} is not installed or an error occurred.")
+        result_text.config(state=tk.DISABLED)
 
     uninstall()
 
 def show_installed_packages():
     """Show a list of installed packages."""
+    result_text.config(state=tk.NORMAL)
+    result_text.delete(1.0, tk.END)  # Clear the result text before starting
     pip_command = get_pip_command()
     try:
+        result_text.insert(tk.END, "Fetching installed packages...\n")
         installed_packages = subprocess.check_output([pip_command, "list"])
-        result_text.config(state=tk.NORMAL)
-        result_text.delete(1.0, tk.END)
         result_text.insert(tk.END, installed_packages.decode("utf-8"))
-        result_text.config(state=tk.DISABLED)
     except subprocess.CalledProcessError as e:
-        messagebox.showerror("Error", f"Error fetching installed packages: {str(e)}")
+        result_text.insert(tk.END, f"Error fetching installed packages: {str(e)}\n")
+    result_text.config(state=tk.DISABLED)
 
 def upgrade_package():
     """Upgrade a package using pip."""
     def upgrade():
+        result_text.config(state=tk.NORMAL)
+        result_text.delete(1.0, tk.END)  # Clear the result text before starting
         package_name = entry_package_name.get().strip()
-        if not package_name:
+        if not package_name or package_name == "Enter package name...":
             messagebox.showerror("Error", "Please enter a package name!")
             return
         pip_command = get_pip_command()
         try:
+            result_text.insert(tk.END, f"Upgrading {package_name}...\n")
             subprocess.check_call([pip_command, "install", "--upgrade", package_name])
+            result_text.insert(tk.END, f"{package_name} has been upgraded successfully.\n")
             messagebox.showinfo("Success", f"{package_name} has been upgraded successfully.")
         except subprocess.CalledProcessError:
+            result_text.insert(tk.END, f"Error upgrading {package_name}.\n")
             messagebox.showerror("Error", f"Error upgrading {package_name}.")
+        result_text.config(state=tk.DISABLED)
 
     upgrade()
 
 def clear_cache():
     """Clear the pip cache."""
+    result_text.config(state=tk.NORMAL)
+    result_text.delete(1.0, tk.END)  # Clear the result text before starting
     pip_command = get_pip_command()
     try:
+        result_text.insert(tk.END, "Clearing pip cache...\n")
         subprocess.check_call([pip_command, "cache", "purge"])
+        result_text.insert(tk.END, "Pip cache has been cleared successfully.\n")
         messagebox.showinfo("Success", "Pip cache has been cleared successfully.")
     except subprocess.CalledProcessError as e:
+        result_text.insert(tk.END, f"Error clearing pip cache: {str(e)}\n")
         messagebox.showerror("Error", f"Error clearing pip cache: {str(e)}")
+    result_text.config(state=tk.DISABLED)
 
 def create_gui():
     """Create the main Tkinter window and user interface."""
@@ -179,8 +251,11 @@ def create_gui():
     header_label = tk.Label(root, text="PIPMATE", font=("Arial", 22, "bold"), fg="#333", bg="#f7f7f7")
     header_label.pack(pady=20)
 
-    # Input field for package name
-    entry_package_name = tk.Entry(root, font=("Arial", 14), width=40, bd=2, relief="solid", bg="#fff", fg="#333")
+    # Input field for package name with placeholder text
+    entry_package_name = tk.Entry(root, font=("Arial", 14), width=40, bd=2, relief="solid", bg="#fff", fg="#999")
+    entry_package_name.insert(0, "Enter package name...")  # Add placeholder text
+    entry_package_name.bind("<FocusIn>", on_entry_click)  # Bind click event
+    entry_package_name.bind("<FocusOut>", on_focus_out)  # Bind focus out event
     entry_package_name.pack(pady=10)
 
     # Button Frame with rounded buttons and shadows
@@ -226,8 +301,8 @@ if __name__ == "__main__":
     init()
     print(Fore.MAGENTA + """██████╗ ██╗██████╗ ███╗   ███╗ █████╗ ████████╗███████╗
 ██╔══██╗██║██╔══██╗████╗ ████║██╔══██╗╚══██╔══╝██╔════╝
-██████╔╝██║██████╔╝██╔████╔██║███████║   ██║   █████╗  
-██╔═══╝ ██║██╔═══╝ ██║╚██╔╝██║██╔══██║   ██║   ██╔══╝  
+██████╔╝██║██████╔╝██╔████╔██║███████║   ██║   █████╗
+██╔═══╝ ██║██╔═══╝ ██║╚██╔╝██║██╔══██║   ██║   ██╔══╝
 ██║     ██║██║     ██║ ╚═╝ ██║██║  ██║   ██║   ███████╗
 ╚═╝     ╚═╝╚═╝     ╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝""")
     print("GitHub: https://github.com/BraveVahid")
