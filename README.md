@@ -60,10 +60,10 @@ PIP-MATE is a Python application that allows users to manage Python packages, cr
 ## Screenshots
 
 ### Fetch Package Info View
-![Main Screen](screenshot1.png)
+![Main Screen](Screenshot1.png)
 
 ### Installed Packages View
-![Installed Packages](screenshot2.png)
+![Installed Packages](Screenshot2.png)
 
 ## Contributing
 
