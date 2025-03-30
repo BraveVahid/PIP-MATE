@@ -527,3 +527,5 @@ if __name__ == "__main__":
         sys.stdout.write(random_color + char)
         sys.stdout.flush()
         sleep(0.01)  # Add a delay for a typing effect
+
+    create_gui()
