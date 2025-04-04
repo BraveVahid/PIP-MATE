@@ -79,4 +79,4 @@ If you have any questions or need further assistance, feel free to contact the d
 
 - **GitHub**: [https://github.com/bravevahid](https://github.com/bravevahid)
 - **Email**: vahidsiyami.dev@gmail.com
-- **Telegram**: [https://t.me/pycevz](https://t.me/pycevz)
+- **Telegram**: [https://t.me/pycevz](https://t.me/BraveVahid)
